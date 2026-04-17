@@ -9,7 +9,7 @@
 | Компонент | Описание |
 |-----------|----------|
 | **landing** | Nginx + статика (`landing/`), форма отправляет заявки в n8n через `fetch`, Яндекс.Метрика и UTM-метки |
-| **crm** | [SalesMan CRM](https://github.com/vladandreevg/salesmancrm), образ `php:7.4-apache` |
+| **crm** | [SalesMan CRM](https://github.com/vladandreevg/salesmancrm), кастомный образ на базе `php:7.4-apache` ([crm/Dockerfile](crm/Dockerfile): mysqli, gd, imap, imagick, timezone и short_open_tag) |
 | **db** | MySQL 8.0, только внутренняя сеть `everest-net` |
 | **Снаружи** | Nginx Proxy Manager (SSL), n8n (webhook) |
 
@@ -18,6 +18,8 @@
 ```
 /opt/everest/   (или корень репозитория)
 ├── docker-compose.yml
+├── crm/
+│   └── Dockerfile        # PHP 7.4 + Apache + расширения для SalesMan
 ├── .env.example          # шаблон переменных
 ├── .env                  # создаётся вручную на сервере, не в git
 ├── landing/
@@ -50,16 +52,22 @@
 
    Обязательно задайте `N8N_WEBHOOK_URL`, `YANDEX_METRIKA_ID`, параметры MySQL и при необходимости `SALESMAN_API_KEY` для n8n.
 
-3. Запуск:
+3. Сборка образа CRM (при первом запуске или после правок в `crm/Dockerfile`):
+
+   ```bash
+   docker compose build crm
+   ```
+
+4. Запуск:
 
    ```bash
    docker compose up -d
    ```
 
-4. Лендинг: `http://<host>:8081`  
+5. Лендинг: `http://<host>:8081`  
    CRM (установка): `http://<host>:8082/_install/`
 
-5. В Nginx Proxy Manager добавьте proxy host на домены (например `book.everestmed.ru` → сервис `landing`, порт **8081**; CRM → `crm`, порт **8082**) по [инструкции в документации](docs/technical-doc.md).
+6. В Nginx Proxy Manager добавьте proxy host на домены (например `book.everestmed.ru` → сервис `landing`, порт **8081**; CRM → `crm`, порт **8082**) по [инструкции в документации](docs/technical-doc.md).
 
 ## Переменные окружения
 

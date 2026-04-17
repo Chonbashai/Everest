@@ -17,7 +17,7 @@ services:
       - everest-net
 
   crm:
-    image: php:7.4-apache
+    build: ./crm
     container_name: everest-crm
     restart: unless-stopped
     env_file:
