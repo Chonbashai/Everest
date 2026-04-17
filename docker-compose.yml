@@ -17,7 +17,7 @@ services:
       - everest-net
 
   crm:
-    image: php:8.1-apache
+    image: php:7.4-apache
     container_name: everest-crm
     restart: unless-stopped
     env_file:
@@ -43,7 +43,7 @@ services:
     ports:
       - "8081:80"
     volumes:
-      - ./landing:/usr/share/nginx/html:ro
+      - ./landing:/usr/share/nginx/html
       - ./landing/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     command: >
       /bin/sh -c "envsubst '$$N8N_WEBHOOK_URL $$YANDEX_METRIKA_ID'
