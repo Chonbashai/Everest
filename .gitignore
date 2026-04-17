@@ -1,0 +1,22 @@
+# Environment
+.env
+
+# CRM runtime uploads/media
+salesmancrm/files/
+
+# Logs
+*.log
+logs/
+
+# Temp and cache
+tmp/
+temp/
+cache/
+*.tmp
+*.cache
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

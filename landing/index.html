@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Эверест Мед - Запись на услуги</title>
+  <meta name="description" content="Онлайн-запись на услуги косметологической клиники Эверест Мед.">
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --card: #151515;
+      --gold: #c7a66a;
+      --gold-soft: #e0c78f;
+      --text: #f5f5f5;
+      --muted: #b8b8b8;
+      --error: #ff6b6b;
+      --ok: #7ee081;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--card);
+      border: 1px solid rgba(199, 166, 106, 0.35);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      color: var(--gold-soft);
+    }
+
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    form { display: grid; gap: 12px; }
+
+    label {
+      font-size: 14px;
+      color: var(--gold-soft);
+    }
+
+    input, select, button {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(199, 166, 106, 0.35);
+      background: #111;
+      color: var(--text);
+      padding: 12px;
+      font-size: 15px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(199, 166, 106, 0.2);
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: linear-gradient(90deg, #ad8a4d, #d7ba7b);
+      color: #181818;
+      border: none;
+      transition: transform 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .status {
+      min-height: 20px;
+      margin-top: 4px;
+      font-size: 14px;
+    }
+    .status.error { color: var(--error); }
+    .status.ok { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Онлайн-запись в Эверест Мед</h1>
+    <p>Оставьте контакты, и администратор подтвердит запись на выбранную услугу.</p>
+
+    <form id="bookingForm">
+      <div>
+        <label for="name">Имя</label>
+        <input id="name" name="name" type="text" required minlength="2" maxlength="80">
+      </div>
+
+      <div>
+        <label for="phone">Телефон</label>
+        <input id="phone" name="phone" type="tel" required placeholder="+7 (___) ___-__-__">
+      </div>
+
+      <div>
+        <label for="service">Услуга</label>
+        <select id="service" name="service" required>
+          <option value="">Выберите услугу</option>
+          <option value="Косметология">Косметология</option>
+          <option value="Фотоэпиляция">Фотоэпиляция</option>
+          <option value="Массаж">Массаж</option>
+          <option value="Прокол ушей">Прокол ушей</option>
+          <option value="Удаление новообразований">Удаление новообразований</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="date">Дата</label>
+        <input id="date" name="date" type="date" required>
+      </div>
+
+      <div>
+        <label for="time">Время</label>
+        <input id="time" name="time" type="time" required>
+      </div>
+
+      <button id="submitBtn" type="submit">Записаться</button>
+      <div id="status" class="status" aria-live="polite"></div>
+    </form>
+  </main>
+
+  <script src="/config.js"></script>
+  <script>
+    const N8N_WEBHOOK_URL = window.APP_CONFIG?.N8N_WEBHOOK_URL || "";
+    const YANDEX_METRIKA_ID = window.APP_CONFIG?.YANDEX_METRIKA_ID || "";
+
+    function getUTMParams() {
+      const params = new URLSearchParams(window.location.search);
+      const keys = ["source", "medium", "campaign", "content"];
+      const utm = {};
+
+      keys.forEach((key) => {
+        const current = params.get("utm_" + key);
+        if (current) localStorage.setItem("utm_" + key, current);
+        utm[key] = localStorage.getItem("utm_" + key) || "direct";
+      });
+
+      return utm;
+    }
+
+    function normalizePhone(phone) {
+      return phone.replace(/[^\d+]/g, "").trim();
+    }
+
+    function setStatus(message, type) {
+      const status = document.getElementById("status");
+      status.textContent = message;
+      status.className = "status " + (type || "");
+    }
+
+    async function sendBooking(payload) {
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Webhook returned " + response.status);
+      }
+    }
+
+    document.getElementById("bookingForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const btn = document.getElementById("submitBtn");
+      const form = event.currentTarget;
+      const utm = getUTMParams();
+
+      const payload = {
+        name: form.name.value.trim(),
+        phone: normalizePhone(form.phone.value),
+        service: form.service.value,
+        date: form.date.value,
+        time: form.time.value,
+        utm_source: utm.source,
+        utm_medium: utm.medium,
+        utm_campaign: utm.campaign,
+        utm_content: utm.content,
+        page_url: window.location.href,
+        user_agent: navigator.userAgent,
+      };
+
+      if (!payload.name || !payload.phone || !payload.service || !payload.date || !payload.time) {
+        setStatus("Проверьте заполнение всех полей формы.", "error");
+        return;
+      }
+
+      if (!N8N_WEBHOOK_URL) {
+        setStatus("Webhook не настроен. Укажите N8N_WEBHOOK_URL при деплое.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      setStatus("Отправляем заявку...", "");
+
+      try {
+        await sendBooking(payload);
+
+        if (window.ym && YANDEX_METRIKA_ID) {
+          window.ym(Number(YANDEX_METRIKA_ID), "reachGoal", "booking_success");
+        }
+
+        form.reset();
+        setStatus("Спасибо! Заявка отправлена.", "ok");
+      } catch (error) {
+        setStatus("Ошибка отправки. Попробуйте снова через минуту.", "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+
+  <!-- Yandex.Metrika counter -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    if (YANDEX_METRIKA_ID) {
+      ym(Number(YANDEX_METRIKA_ID), "init", {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true
+      });
+    }
+  </script>
+  <noscript><div><img id="ymNoScriptImage" src="https://mc.yandex.ru/watch/" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+  <script>
+    (function () {
+      if (!YANDEX_METRIKA_ID) return;
+      var img = document.getElementById("ymNoScriptImage");
+      if (img) img.src = "https://mc.yandex.ru/watch/" + YANDEX_METRIKA_ID;
+    })();
+  </script>
+  <!-- /Yandex.Metrika counter -->
+</body>
+</html>

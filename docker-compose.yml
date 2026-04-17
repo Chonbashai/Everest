@@ -1,0 +1,65 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: everest-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - everest-net
+
+  crm:
+    image: php:8.1-apache
+    container_name: everest-crm
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      TZ: ${TZ}
+    ports:
+      - "8082:80"
+    volumes:
+      - ./salesmancrm:/var/www/html
+    networks:
+      - everest-net
+      - nginx-proxy-manager_default
+
+  landing:
+    image: nginx:alpine
+    container_name: everest-landing
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8081:80"
+    volumes:
+      - ./landing:/usr/share/nginx/html:ro
+      - ./landing/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    command: >
+      /bin/sh -c "envsubst '$$N8N_WEBHOOK_URL $$YANDEX_METRIKA_ID'
+      < /usr/share/nginx/html/config.template.js
+      > /usr/share/nginx/html/config.js
+      && exec nginx -g 'daemon off;'"
+    networks:
+      - everest-net
+      - nginx-proxy-manager_default
+
+volumes:
+  mysql_data:
+
+networks:
+  everest-net:
+    name: everest-net
+    driver: bridge
+  nginx-proxy-manager_default:
+    external: true
