@@ -15,40 +15,126 @@
 
 ### Architecture
 
-* **API style:** REST (`/api/v2/`).
+**MVP онлайн-записи (same-origin):** лендинг проксирует `/api/*` → `booking-api:3000/api/*`. Booking API доступен только внутри `everest-net`, без published ports и без CORS.
+
+```mermaid
+flowchart LR
+  Browser[Browser book.everestmed.ru]
+  Landing[landing nginx :8081]
+  BookingAPI[booking-api :3000]
+  BookingDB[(booking-db PostgreSQL)]
+  N8N[n8n webhook]
+  CRM[SalesMan CRM]
+  MySQL[(MySQL db)]
+
+  Browser -->|"same-origin /api/*"| Landing
+  Landing -->|"proxy_pass /api/"| BookingAPI
+  BookingAPI --> BookingDB
+  BookingAPI -->|N8N_BOOKING_WEBHOOK| N8N
+  N8N --> CRM
+  CRM --> MySQL
+```
+
+* **API style:** REST (`/api/v2/` для CRM; `/api/*` для booking-api).
 * **Base URLs:**
   * CRM: `http://crm.yourdomain.ru/`
-  * Лендинг: `http://book.yourdomain.ru/`
+  * Лендинг + booking API: `http://book.yourdomain.ru/` (`/api/doctors`, `/api/services`, `/api/slots`, `/api/appointments`)
   * Все внешние запросы проходят через **Nginx Proxy Manager** (NPM).
-
-Инфраструктурная схема:
 
 | Компонент | Контейнер/порт | Доступ | Назначение |
 | --- | --- | --- | --- |
-| Nginx Proxy Manager | :80, :443, :81 | 217.114.14.124:80/443/81 | SSL-прокси, админ-панель |
-| Лендинг | :8081 (внутр:80) | Только через NPM | Обработка форм, statics, POST на n8n или PHP |
-| CRM | :8082 (внутр:80) | Только через NPM | SalesMan CRM, API |
-| MySQL | intern :3306 | Внутри docker-network | База для CRM |
-| n8n | :5678 | 217.114.14.124:5678 | Интеграционная логика, Webhook-поток записей |
+| Nginx Proxy Manager | :80, :443, :81 | Публичный | SSL-прокси |
+| Лендинг | :8081 | NPM → book.everestmed.ru | Статика + reverse proxy `/api/*` |
+| booking-api | :3000 (everest-net) | Через landing nginx | Расписание, слоты, записи |
+| booking-db | :5432 (everest-net) | Внутренний | PostgreSQL |
+| CRM | :8082 | NPM → crm.everestmed.ru | SalesMan CRM |
+| MySQL | :3306 | Внутренний | База CRM |
+| n8n | :5678 | Webhook | booking-api → CRM |
+
+**Nginx proxy (landing):**
+
+```nginx
+location /api/ {
+    proxy_pass http://booking-api:3000/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 **Внешний поток:**  
 
-Браузер → DNS → Nginx Proxy Manager (SSL/TLS) → (внешний домен, напр. book.everestmed.ru) → internal landing (8081)  
+Браузер → NPM (SSL) → book.everestmed.ru → landing (8081) → `/api/*` → booking-api → PostgreSQL → n8n → CRM  
 
 CRM через crm.everestmed.ru → internal crm (8082)
 
-Сеть Docker
+Сеть Docker: все контейнеры в `everest-net`; booking-api без published ports.
 
-Все контейнеры должны находиться в одной пользовательской сети (например, `everest-net`), для seamless-проксификации со стороны NPM.
+---
 
 ---
 
 ### Core Capabilities
 
-* Онлайн-приём заявок с лендинга (форма: имя, телефон, услуга, дата, время)
-* Передача данных в CRM: поиск/создание клиента → сделка → календарное дело/шахматка
-* Учёт и отчёты в единой CRM-базе
-* Интеграция с Telegram для мгновенных уведомлений через workflow n8n (без программирования)
+* Онлайн-запись с реальными свободными слотами (booking-api + PostgreSQL)
+* Выбор услуги, врача, даты и времени на лендинге
+* Автоматическая передача записи в CRM через n8n webhook (`N8N_BOOKING_WEBHOOK`)
+* Временная бронь: статус `PENDING` автоматически отменяется через 15 минут
+* Защита от двойного бронирования (partial unique index для PENDING/CONFIRMED)
+* Учёт UTM-меток и Яндекс.Метрики
+* Интеграция с Telegram через workflow n8n
+
+---
+
+## Booking API (online-booking-api)
+
+### Эндпоинты
+
+| Метод | URL (same-origin) | Описание |
+| --- | --- | --- |
+| GET | `/api/doctors` | Активные врачи |
+| GET | `/api/services` | Активные услуги |
+| GET | `/api/slots?doctorId=1&serviceId=2&date=2026-07-01` | Свободные слоты |
+| POST | `/api/appointments` | Создание записи |
+
+### POST /api/appointments
+
+Тело запроса:
+
+```json
+{
+  "clientName": "Анна",
+  "phone": "+79991234567",
+  "doctorId": 1,
+  "serviceId": 2,
+  "date": "2026-07-01",
+  "time": "11:00",
+  "comment": "Первый визит",
+  "utmSource": "everestmed",
+  "utmMedium": "website",
+  "utmCampaign": "organic",
+  "utmContent": "kosmetologiya",
+  "utmTerm": "direct"
+}
+```
+
+После создания booking-api вызывает `N8N_BOOKING_WEBHOOK` с полями: `appointmentId`, `clientName`, `phone`, `doctorName`, `serviceName`, `appointmentDate`, `startTime`, `comment`, UTM. Ошибки n8n **не откатывают** запись (сохраняется в `webhookError`).
+
+### Статусы записей
+
+| Статус | Описание |
+| --- | --- |
+| PENDING | Временная бронь (15 мин), блокирует слот |
+| CONFIRMED | Подтверждённая запись, блокирует слот |
+| COMPLETED | Завершённый визит, не блокирует слот |
+| CANCELLED | Отмена (в т.ч. авто по истечении PENDING), не блокирует слот |
+
+### Алгоритм слотов
+
+- Сетка: 30 минут
+- Учитывается длительность услуги и расписание врача (`DoctorSchedule`)
+- Исключаются пересечения с PENDING (не старше 15 мин) и CONFIRMED
 
 ---
 
@@ -95,7 +181,19 @@ API-ключ не должен быть доступен с фронтенда!
 
 ### Интеграция через n8n (РЕКОМЕНДУЕМЫЙ ПОДХОД)
 
-Архитектурный поток
+**Новый поток (MVP):**
+
+1. **Лендинг** отправляет POST на `/api/appointments` (same-origin через nginx).
+2. **booking-api** сохраняет запись в PostgreSQL и вызывает webhook n8n: `N8N_BOOKING_WEBHOOK`.
+3. **n8n workflow** последовательно:
+   * Проверяет/создаёт клиента по телефону
+   * Создаёт сделку и календарное дело
+   * Отправляет оповещение в Telegram (если `TELEGRAM_NOTIFY_ENABLED=true` в n8n IF-узле)
+4. SalesMan API-ключ хранится **только в n8n**, не в booking-api.
+
+**Legacy-поток (устарел для формы):** прямой POST лендинга на `N8N_WEBHOOK_URL` — заменён booking-api.
+
+Архитектурный поток (legacy)
 
 1. **Форма на лендинге** отправляет POST-запрос на вебхук n8n:  
 

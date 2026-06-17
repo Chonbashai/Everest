@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Doctor {
+  id             Int              @id @default(autoincrement())
+  name           String
+  specialization String
+  cabinet        String
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  schedules      DoctorSchedule[]
+  appointments   Appointment[]
+}
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  title           String
+  category        String
+  durationMinutes Int
+  price           Decimal       @db.Decimal(10, 2)
+  doctorPercent   Decimal       @db.Decimal(5, 2)
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  appointments    Appointment[]
+}
+
+model DoctorSchedule {
+  id        Int    @id @default(autoincrement())
+  doctorId  Int
+  weekday   Int
+  startTime String
+  endTime   String
+  doctor    Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, weekday])
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  clientName      String
+  phone           String
+  doctorId        Int
+  serviceId       Int
+  appointmentDate DateTime          @db.Date
+  startTime       String
+  endTime         String
+  status          AppointmentStatus @default(PENDING)
+  crmDealId       String?
+  comment         String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  utmTerm         String?
+  webhookError    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  service         Service           @relation(fields: [serviceId], references: [id])
+
+  @@index([doctorId, appointmentDate])
+  @@index([status, createdAt])
+}

@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Private clinic data (never commit)
+private/
+
 # CRM runtime uploads/media
 salesmancrm/files/
 
@@ -20,3 +23,8 @@ cache/
 Thumbs.db
 .idea/
 .vscode/
+
+# Node.js (online-booking-api)
+online-booking-api/node_modules/
+online-booking-api/dist/
+online-booking-api/.env
