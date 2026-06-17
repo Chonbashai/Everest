@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Онлайн-запись — Эверест Мед, Томск</title>
+    <meta
+      name="description"
+      content="Запишитесь на приём в центр эстетики и красоты «Эверест Мед» онлайн: выберите врача, услугу, дату и время."
+    />
+    <meta property="og:title" content="Онлайн-запись — Эверест Мед" />
+    <meta
+      property="og:description"
+      content="Удобная онлайн-запись в медицинский центр «Эверест Мед». Опытные врачи, современное оборудование, индивидуальный подход."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/config.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script type="text/javascript">
+      (function (m, e, t, r, i, k, a) {
+        m[i] =
+          m[i] ||
+          function () {
+            (m[i].a = m[i].a || []).push(arguments);
+          };
+        m[i].l = 1 * new Date();
+        for (var j = 0; j < document.scripts.length; j++) {
+          if (document.scripts[j].src === r) {
+            return;
+          }
+        }
+        k = e.createElement(t);
+        a = e.getElementsByTagName(t)[0];
+        k.async = 1;
+        k.src = r;
+        a.parentNode.insertBefore(k, a);
+      })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+      var metrikaId = window.APP_CONFIG && window.APP_CONFIG.YANDEX_METRIKA_ID;
+      if (metrikaId) {
+        ym(Number(metrikaId), "init", {
+          clickmap: true,
+          trackLinks: true,
+          accurateTrackBounce: true,
+          webvisor: true,
+        });
+      }
+    </script>
+    <noscript>
+      <div>
+        <img
+          id="ymNoScriptImage"
+          src="https://mc.yandex.ru/watch/"
+          style="position: absolute; left: -9999px"
+          alt=""
+        />
+      </div>
+    </noscript>
+    <script>
+      (function () {
+        var metrikaId = window.APP_CONFIG && window.APP_CONFIG.YANDEX_METRIKA_ID;
+        if (!metrikaId) return;
+        var img = document.getElementById("ymNoScriptImage");
+        if (img) img.src = "https://mc.yandex.ru/watch/" + metrikaId;
+      })();
+    </script>
+  </body>
+</html>

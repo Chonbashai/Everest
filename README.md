@@ -8,7 +8,7 @@
 
 | Компонент | Описание |
 |-----------|----------|
-| **landing** | Nginx + статика (`landing/`), reverse proxy `/api/*` → booking-api, Яндекс.Метрика и UTM |
+| **landing** | React SPA (`landing/app/`) + Nginx, reverse proxy `/api/*` → booking-api, Яндекс.Метрика и UTM |
 | **booking-api** | Node.js 20 + Express + Prisma — расписание, слоты, записи ([online-booking-api/](online-booking-api/)) |
 | **booking-db** | PostgreSQL 16 — база онлайн-записи (только `everest-net`) |
 | **crm** | [SalesMan CRM](https://github.com/vladandreevg/salesmancrm), кастомный образ ([crm/Dockerfile](crm/Dockerfile)) |
@@ -34,6 +34,9 @@ Booking API **не публикует порты** наружу. Доступ т
 ├── online-booking-api/     # REST API онлайн-записи
 ├── crm/
 ├── landing/
+│   ├── app/                # React SPA (онлайн-запись)
+│   ├── Dockerfile
+│   └── nginx.conf
 ├── salesmancrm/
 ├── .env.example
 └── docs/technical-doc.md

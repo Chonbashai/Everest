@@ -28,3 +28,11 @@ Thumbs.db
 online-booking-api/node_modules/
 online-booking-api/dist/
 online-booking-api/.env
+
+# Landing React app
+landing/app/node_modules/
+landing/app/dist/
+
+# Lovable source export (optional reference)
+site lovable/node_modules/
+site lovable/dist/
