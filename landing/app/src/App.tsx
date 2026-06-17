@@ -473,7 +473,7 @@ export default function App() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-neutral-900">Город Томск</p>
-                  <p className="text-sm text-neutral-500">ул. Карла Маркса, 15/1</p>
+                  <p className="text-sm text-neutral-500">ул. Вокзальная, 21</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -519,7 +519,7 @@ export default function App() {
                 Карта
               </div>
               <p className="text-sm text-neutral-500 max-w-[28ch] mx-auto">
-                г. Томск, ул. Карла Маркса, 15/1 — медицинский центр «Эверест Мед»
+                г. Томск, ул. Вокзальная, 21 — медицинский центр «Эверест Мед»
               </p>
             </div>
           </div>
